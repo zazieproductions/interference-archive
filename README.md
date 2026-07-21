@@ -1,9 +1,15 @@
 # INTERFERENCE ARCHIVE
 
 > A generative audiovisual horror instrument disguised as a recovered transmission terminal.
-> <p align="left">
+<p align="center">
   <a href="https://zazieproductions.github.io/interference-archive/">
-    <img src="https://img.shields.io/badge/LAUNCH_LIVE_ARCHIVE-000000?style=for-the-badge" alt="Launch Interference Archive">
+    <img src="assets/interference-archive-preview.png" alt="Enter the Interference Archive">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://zazieproductions.github.io/interference-archive/">
+    <strong>ENTER LIVE ARCHIVE</strong>
   </a>
 </p>
 **Interference Archive** is an interactive browser artwork that combines procedural sound synthesis, animated signal visualization, fictional systems design, and downloadable narrative artifacts. The interface presents itself as a late-1990s archival console used to recover unstable transmissions from abandoned research sites.
