@@ -12,6 +12,7 @@
     <strong>ENTER LIVE ARCHIVE</strong>
   </a>
 </p>
+
 **Interference Archive** is an interactive browser artwork that combines procedural sound synthesis, animated signal visualization, fictional systems design, and downloadable narrative artifacts. The interface presents itself as a late-1990s archival console used to recover unstable transmissions from abandoned research sites.
 
 Rather than behaving like a conventional music player or game, the project treats the browser as a **speculative instrument**: each control simultaneously alters the sound, the visual field, and the implied state of the fictional archive.
