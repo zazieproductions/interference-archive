@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interference Archive is an interactive browser-based audiovisual transmission console built with Web Audio, Canvas, and procedural fiction.">
+    <meta name="theme-color" content="#050805">
+    <meta property="og:title" content="Interference Archive">
+    <meta property="og:description" content="A generative audiovisual horror instrument disguised as a recovered transmission terminal.">
+    <meta property="og:type" content="website">
+    <title>INTERFERENCE ARCHIVE // IA-CLASS-04</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body class="bg-zinc-950 text-emerald-300 overflow-hidden">
+    <div class="flex flex-col h-screen max-w-[1280px] mx-auto" style="font-family: 'VT323', monospace;">
+        <!-- HEADER -->
+        <div class="bg-black border-b border-emerald-400 py-2 px-6 flex items-center justify-between">
+            <div class="flex items-center gap-x-4">
+                <div class="w-6 h-6 bg-emerald-400 flex items-center justify-center text-black text-[18px] leading-none pt-0.5">⚠</div>
+                <div>
+                    <span class="text-emerald-400 text-3xl tracking-[4px] neon-text">INTERFERENCE</span>
+                    <span class="text-white text-3xl tracking-[4px]">ARCHIVE</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-x-8 text-sm">
+                <div class="flex items-center gap-x-2">
+                    <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                    <span class="text-red-400 text-xs tracking-widest">LIVE FEED</span>
+                </div>
+                
+                <div onclick="togglePower()" 
+                     class="cursor-pointer px-4 py-1 border border-emerald-400 hover:bg-emerald-900 transition-colors text-xs flex items-center gap-x-2">
+                    <span id="power-status" class="text-emerald-400">● CONNECTED</span>
+                </div>
+                
+                <div class="text-[10px] text-zinc-500 border border-zinc-700 px-3 py-1">
+                    1998 • RECOVERED TRANSMISSION PROTOCOL v0.8.4
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-x-2 text-xs">
+                <div class="bg-zinc-900 px-3 py-1 border border-amber-300 text-amber-300 flex items-center">
+                    <span id="current-site-code" class="text-amber-300">NULL-00</span>
+                </div>
+                <button onclick="captureTransmission()" 
+                        class="bg-red-600 hover:bg-red-500 transition-colors text-white px-5 py-2 text-sm tracking-widest flex items-center gap-x-2">
+                    <span class="text-lg leading-none">📼</span>
+                    <span>CAPTURE</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="flex flex-1 overflow-hidden">
+            
+            <!-- LEFT PANEL: SITES -->
+            <div class="w-56 bg-zinc-900 border-r border-emerald-900 p-4 flex flex-col">
+                <div class="uppercase text-[10px] tracking-[2px] mb-4 text-emerald-400 border-b border-emerald-900 pb-2">
+                    RECOVERED NODES
+                </div>
+                
+                <div onclick="selectSite(0)" id="site-0"
+                     class="site-button mb-2 p-3 border border-transparent hover:border-emerald-400 bg-zinc-950 cursor-pointer transition-all group">
+                    <div class="flex justify-between items-baseline">
+                        <div class="text-emerald-200 text-xl">ROOM 04</div>
+                        <div class="text-[10px] text-teal-300">04</div>
+                    </div>
+                    <div class="text-zinc-400 text-xs leading-tight mt-1 group-hover:text-emerald-300 transition-colors">
+                        Pediatric Sleep Laboratory
+                    </div>
+                    <div class="h-1 w-0 bg-emerald-400 mt-4 group-hover:w-full transition-all"></div>
+                </div>
+                
+                <div onclick="selectSite(1)" id="site-1"
+                     class="site-button mb-2 p-3 border border-transparent hover:border-emerald-400 bg-zinc-950 cursor-pointer transition-all group">
+                    <div class="flex justify-between items-baseline">
+                        <div class="text-emerald-200 text-xl">NODE 17</div>
+                        <div class="text-[10px] text-teal-300">17</div>
+                    </div>
+                    <div class="text-zinc-400 text-xs leading-tight mt-1 group-hover:text-emerald-300 transition-colors">
+                        Flooded Telephone Exchange
+                    </div>
+                    <div class="h-1 w-0 bg-emerald-400 mt-4 group-hover:w-full transition-all"></div>
+                </div>
+                
+                <div onclick="selectSite(2)" id="site-2"
+                     class="site-button mb-2 p-3 border border-transparent hover:border-emerald-400 bg-zinc-950 cursor-pointer transition-all group">
+                    <div class="flex justify-between items-baseline">
+                        <div class="text-emerald-200 text-xl">CHAMBER 09</div>
+                        <div class="text-[10px] text-teal-300">09</div>
+                    </div>
+                    <div class="text-zinc-400 text-xs leading-tight mt-1 group-hover:text-emerald-300 transition-colors">
+                        Animal Cognition Unit
+                    </div>
+                    <div class="h-1 w-0 bg-emerald-400 mt-4 group-hover:w-full transition-all"></div>
+                </div>
+                
+                <div onclick="selectSite(3)" id="site-3"
+                     class="site-button mb-2 p-3 border border-transparent hover:border-emerald-400 bg-zinc-950 cursor-pointer transition-all group">
+                    <div class="flex justify-between items-baseline">
+                        <div class="text-emerald-200 text-xl">RELAY 31</div>
+                        <div class="text-[10px] text-teal-300">31</div>
+                    </div>
+                    <div class="text-zinc-400 text-xs leading-tight mt-1 group-hover:text-emerald-300 transition-colors">
+                        Unknown Residential Structure
+                    </div>
+                    <div class="h-1 w-0 bg-emerald-400 mt-4 group-hover:w-full transition-all"></div>
+                </div>
+                
+                <div onclick="selectSite(4)" id="site-4"
+                     class="site-button p-3 border border-transparent hover:border-emerald-400 bg-zinc-950 cursor-pointer transition-all group">
+                    <div class="flex justify-between items-baseline">
+                        <div class="text-emerald-200 text-xl">NULL SITE</div>
+                        <div class="text-[10px] text-teal-300">00</div>
+                    </div>
+                    <div class="text-zinc-400 text-xs leading-tight mt-1 group-hover:text-emerald-300 transition-colors">
+                        Coordinates Removed
+                    </div>
+                    <div class="h-1 w-0 bg-red-400 mt-4 group-hover:w-full transition-all"></div>
+                </div>
+                
+                <div class="mt-auto pt-6 border-t border-zinc-700">
+                    <div class="text-[10px] text-zinc-500 mb-2">SIGNAL ORIGIN</div>
+                    <div id="site-fullname" 
+                         class="text-emerald-100 text-sm leading-none">
+                        NULL SITE — COORDINATES REMOVED
+                    </div>
+                </div>
+                
+                <div class="mt-auto text-[9px] text-zinc-600 pt-8">
+                    RECOVERED<br>
+                    1998 • ECHO PROGRAM
+                </div>
+            </div>
+            
+            <!-- CENTER: VISUAL INSTRUMENT -->
+            <div class="flex-1 flex flex-col">
+                <!-- VISUAL HEADER -->
+                <div class="h-10 bg-black border-b border-emerald-900 px-6 flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-x-6">
+                        <div class="flex items-center gap-x-1.5">
+                            <span class="px-2 py-0.5 bg-emerald-900 text-emerald-400 text-[10px]">TRANSMISSION</span>
+                            <span id="visual-site" class="text-white">NULL-00</span>
+                        </div>
+                        <div class="h-3 w-px bg-zinc-700"></div>
+                        <div id="timestamp" class="tabular-nums text-emerald-400 text-sm">00:00:00</div>
+                    </div>
+                    
+                    <div class="flex items-center gap-x-8 text-[10px]">
+                        <div class="flex items-center gap-x-2">
+                            <span class="text-zinc-500">COHESION</span>
+                            <span id="live-cohesion" class="text-amber-300 tabular-nums w-8 text-right">74</span>
+                        </div>
+                        <div class="flex items-center gap-x-2">
+                            <span class="text-zinc-500">ANOMALY</span>
+                            <span id="anomaly-level" class="text-red-400 tabular-nums">0.23</span>
+                        </div>
+                    </div>
+                    
+                    <div onclick="toggleMute()" 
+                         class="cursor-pointer flex items-center gap-x-2 text-xs text-zinc-400 hover:text-white transition-colors">
+                        <span id="mute-text">AUDIO ON</span>
+                        <div class="w-6 h-3 border border-emerald-400 relative">
+                            <div id="mute-indicator" 
+                                 class="absolute top-0.5 left-0.5 w-2 h-2 bg-emerald-400 transition-all"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- CANVAS -->
+                <div class="flex-1 flex items-center justify-center p-8 bg-[#050905] crt relative">
+                    <div class="canvas-container rounded-md overflow-hidden relative">
+                        <canvas id="main-canvas" width="720" height="420" 
+                                class="block"></canvas>
+                        
+                        <!-- OVERLAY LABELS -->
+                        <div class="absolute top-6 left-6 font-mono text-[11px] text-emerald-400/70 flex flex-col gap-y-0.5 pointer-events-none">
+                            <div class="flex items-center gap-x-2">
+                                <span class="w-2 h-2 bg-red-400 animate-pulse inline-block"></span>
+                                <span id="overlay-site" class="neon-text">NULL SITE ACTIVE</span>
+                            </div>
+                            <div id="overlay-status" class="text-amber-300 text-[10px]">SIGNAL LOCKED • 92.4%</div>
+                        </div>
+                        
+                        <div id="center-text" 
+                             class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[42px] font-bold text-white/5 tracking-[12px] pointer-events-none select-none">
+                            ECHO
+                        </div>
+                        
+                        <!-- RIGHT SIDE INFO -->
+                        <div class="absolute top-6 right-6 w-36 bg-black/60 border border-emerald-900/70 p-3 text-[10px] leading-none">
+                            <div class="flex justify-between mb-3">
+                                <div class="text-zinc-400">FREQ</div>
+                                <div id="peak-freq" class="text-cyan-300 tabular-nums">214Hz</div>
+                            </div>
+                            <div class="h-px bg-emerald-900 mb-3"></div>
+                            <div id="fake-spectrogram" class="flex items-end gap-x-px h-20">
+                                <!-- populated by JS -->
+                            </div>
+                        </div>
+                        
+                        <!-- BOTTOM BAR -->
+                        <div class="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black to-transparent flex items-end px-8 pb-4">
+                            <div id="osc-label" 
+                                 class="text-[9px] text-emerald-400 flex-1 flex items-center gap-x-5">
+                                <div class="flex-1 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent"></div>
+                                <div class="uppercase tracking-widest">OSCILLOSCOPE</div>
+                                <div class="flex-1 h-px bg-gradient-to-l from-transparent via-emerald-400 to-transparent"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- WARNING STAMP -->
+                        <div class="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] leading-none px-8 py-1 rotate-12 border border-white/30 text-center tracking-widest shadow-2xl"
+                             style="font-size: 9px;">
+                            CLASSIFIED<br>RECOVERED
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- CONSOLE LOG -->
+                <div class="h-44 bg-black border-t border-emerald-900 p-4 font-mono text-xs overflow-hidden flex flex-col">
+                    <div class="flex items-center justify-between text-[10px] text-zinc-500 mb-2">
+                        <div>RECOVERY LOG</div>
+                        <div onclick="clearLog()" class="cursor-pointer hover:text-red-300">CLEAR</div>
+                    </div>
+                    <div id="console-log" 
+                         class="flex-1 overflow-y-auto text-emerald-200/80 text-[13px] leading-tight space-y-1 font-light"></div>
+                </div>
+            </div>
+            
+            <!-- RIGHT PANEL: CONTROLS -->
+            <div class="w-64 bg-zinc-900 border-l border-emerald-900 p-5 flex flex-col">
+                <div class="uppercase text-xs tracking-widest mb-6 text-center text-amber-300 border border-amber-300 py-1">
+                    PARAMETERS
+                </div>
+                
+                <!-- Controls -->
+                <div class="space-y-7 flex-1">
+                    <!-- Control 1 -->
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1 text-emerald-400">
+                            <div>SIGNAL COHESION</div>
+                            <div id="val-cohesion" class="tabular-nums text-white">68</div>
+                        </div>
+                        <input type="range" id="slider-cohesion" 
+                               min="10" max="100" value="68"
+                               oninput="updateParam(0, this.value)"
+                               class="w-full accent-emerald-400 bg-zinc-800">
+                        <div class="flex justify-between text-[9px] text-zinc-500 mt-0.5">
+                            <div>FRAGILE</div>
+                            <div>STABLE</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Control 2 -->
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1 text-emerald-400">
+                            <div>MEMORY DECAY</div>
+                            <div id="val-decay" class="tabular-nums text-white">44</div>
+                        </div>
+                        <input type="range" id="slider-decay" 
+                               min="10" max="90" value="44"
+                               oninput="updateParam(1, this.value)"
+                               class="w-full accent-emerald-400 bg-zinc-800">
+                        <div class="flex justify-between text-[9px] text-zinc-500 mt-0.5">
+                            <div>SLOW</div>
+                            <div>RAPID</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Control 3 -->
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1 text-emerald-400">
+                            <div>OBSERVER CONTAMINATION</div>
+                            <div id="val-contam" class="tabular-nums text-white">31</div>
+                        </div>
+                        <input type="range" id="slider-contam" 
+                               min="0" max="80" value="31"
+                               oninput="updateParam(2, this.value)"
+                               class="w-full accent-emerald-400 bg-zinc-800">
+                        <div class="flex justify-between text-[9px] text-zinc-500 mt-0.5">
+                            <div>CLEAN</div>
+                            <div>POLLUTED</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Control 4 -->
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1 text-emerald-400">
+                            <div>SPATIAL RESIDUE</div>
+                            <div id="val-residue" class="tabular-nums text-white">59</div>
+                        </div>
+                        <input type="range" id="slider-residue" 
+                               min="10" max="100" value="59"
+                               oninput="updateParam(3, this.value)"
+                               class="w-full accent-emerald-400 bg-zinc-800">
+                        <div class="flex justify-between text-[9px] text-zinc-500 mt-0.5">
+                            <div>FLAT</div>
+                            <div>DIFFUSE</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Control 5 -->
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1 text-emerald-400">
+                            <div>VOICE RECONSTRUCTION</div>
+                            <div id="val-voice" class="tabular-nums text-white">77</div>
+                        </div>
+                        <input type="range" id="slider-voice" 
+                               min="0" max="100" value="77"
+                               oninput="updateParam(4, this.value)"
+                               class="w-full accent-emerald-400 bg-zinc-800">
+                        <div class="flex justify-between text-[9px] text-zinc-500 mt-0.5">
+                            <div>SILENCE</div>
+                            <div>CLARITY</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Control 6 -->
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1 text-emerald-400">
+                            <div>ARCHIVE INTEGRITY</div>
+                            <div id="val-integrity" class="tabular-nums text-white">82</div>
+                        </div>
+                        <input type="range" id="slider-integrity" 
+                               min="20" max="100" value="82"
+                               oninput="updateParam(5, this.value)"
+                               class="w-full accent-red-400 bg-zinc-800">
+                        <div class="flex justify-between text-[9px] text-zinc-500 mt-0.5">
+                            <div>DECAYING</div>
+                            <div>STABLE</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-auto">
+                    <div class="text-[10px] bg-zinc-950 border border-zinc-700 p-4 text-zinc-400 leading-tight">
+                        ADJUST TO STABILIZE<br>
+                        <span class="text-red-400">THE SIGNAL</span><br><br>
+                        <span class="text-amber-300">CAUTION:</span> EXTREME<br>
+                        VALUES MAY INDUCE<br>
+                        ANOMALOUS EVENTS
+                    </div>
+                    
+                    <div onclick="randomizeParams()" 
+                         class="mt-8 text-center text-xs border border-dashed border-zinc-600 py-3 hover:border-amber-300 hover:text-amber-300 cursor-pointer transition-colors">
+                        RANDOMIZE PARAMETERS
+                    </div>
+                </div>
+                
+                <!-- STATUS -->
+                <div class="mt-8 pt-5 border-t border-zinc-700 text-center">
+                    <div id="seed-display" 
+                         class="font-mono text-[10px] text-zinc-500 tracking-widest">
+                        SEED: 77419302
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- BOTTOM BAR -->
+        <div class="h-9 bg-black flex items-center px-5 text-[10px] text-zinc-500 justify-between border-t border-emerald-900">
+            <div class="flex items-center gap-x-5">
+                <div>IA-04-7719 • ACTIVE TRANSMISSION</div>
+                <div class="w-px h-3 bg-zinc-700"></div>
+                <div onclick="showHelp()" class="cursor-pointer hover:text-emerald-400">PROTOCOL MANUAL</div>
+            </div>
+            <div class="flex items-center gap-x-8">
+                <div class="flex items-center">
+                    <span class="text-emerald-400">BANDWIDTH:</span>
+                    <span id="bandwidth-val" class="ml-2 tabular-nums text-white">2.4kHz</span>
+                </div>
+                <div onclick="window.location.reload()" 
+                     class="cursor-pointer flex items-center gap-x-1 text-red-300 hover:text-red-400">
+                    <span class="text-lg">⟳</span>
+                    <span class="text-xs">REBOOT ARCHIVE</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CAPTURE MODAL -->
+    <div onclick="if(event.target.id === 'modal-backdrop') hideCaptureModal()" 
+         id="modal-backdrop"
+         class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+        <div onclick="event.stopImmediatePropagation()" 
+             class="max-w-md w-full bg-zinc-900 border-2 border-red-400 shadow-2xl">
+            
+            <!-- modal header -->
+            <div class="bg-black px-6 py-4 flex items-center justify-between border-b border-red-400">
+                <div class="flex items-center gap-x-3">
+                    <span class="text-red-400 text-xl">📼</span>
+                    <div>
+                        <div class="text-red-400 text-sm tracking-[2px]">ARCHIVE CASE FILE</div>
+                        <div id="modal-archive-id" class="text-white text-2xl tabular-nums">IA-04-7719</div>
+                    </div>
+                </div>
+                <div onclick="hideCaptureModal()" 
+                     class="w-8 h-8 flex items-center justify-center text-3xl leading-none text-zinc-400 hover:text-white cursor-pointer">×</div>
+            </div>
+            
+            <div class="p-6">
+                <!-- image -->
+                <div class="border border-emerald-300 bg-black p-2 mb-6">
+                    <img id="modal-image" 
+                         class="w-full h-56 object-cover border border-zinc-700" 
+                         alt="transmission snapshot">
+                </div>
+                
+                <!-- content -->
+                <div class="space-y-6">
+                    <div>
+                        <div class="text-xs text-zinc-400">CLASSIFICATION</div>
+                        <div id="modal-classification" 
+                             class="text-amber-300 text-xl">RECIPROCAL OCCUPANCY EVENT</div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-6 text-xs">
+                        <div>
+                            <div class="text-zinc-400">SITE</div>
+                            <div id="modal-site" class="text-emerald-200">ROOM 04 — Pediatric Sleep Laboratory</div>
+                        </div>
+                        <div>
+                            <div class="text-zinc-400">TIMESTAMP</div>
+                            <div id="modal-timestamp" class="text-white tabular-nums">1998-11-03  03:14:22</div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="text-xs text-zinc-400 mb-2">INCIDENT SUMMARY</div>
+                        <div id="modal-report" 
+                             class="text-zinc-300 text-sm leading-relaxed border-l-2 border-red-400 pl-4 text-balance">
+                            The signal began imitating the observer’s breathing approximately 43 seconds before microphone access was granted.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-black p-4 flex items-center justify-between text-xs border-t border-red-400">
+                <button onclick="downloadCaseFile()" 
+                        class="flex-1 py-4 bg-red-500 hover:bg-red-600 text-white transition-colors mx-2">
+                    DOWNLOAD .CASE
+                </button>
+                <button onclick="hideCaptureModal()" 
+                        class="flex-1 py-4 bg-transparent border border-zinc-400 hover:border-white text-zinc-300 transition-colors mx-2">
+                    CLOSE
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- INITIALIZE OVERLAY -->
+    <div onclick="initializeSystem()" 
+         id="initialize-overlay"
+         class="fixed inset-0 bg-black/95 flex items-center justify-center z-[9999] cursor-pointer">
+        <div class="text-center max-w-xs">
+            <div class="mx-auto mb-8 w-16 h-16 border-4 border-emerald-400 border-t-transparent animate-spin rounded-full"></div>
+            <div class="text-emerald-400 text-4xl neon-text tracking-widest mb-2">INTERFERENCE</div>
+            <div class="text-white text-5xl tracking-[8px] mb-10">ARCHIVE</div>
+            
+            <div class="inline-block border border-red-400 text-red-400 text-sm px-10 py-6 leading-none">
+                CLICK TO ACCESS<br>
+                <span class="text-xs text-zinc-400 block mt-6">CLASSIFIED RECOVERED TRANSMISSIONS</span>
+            </div>
+            
+            <div class="mt-16 text-[10px] text-zinc-500">
+                REQUIRES AUDIO PERMISSION<br>
+                FOR PROCEDURAL SIGNAL SYNTHESIS
+            </div>
+        </div>
+    </div>
+    
+    <script src="assets/js/app.js" defer></script>
+</body>
+</html>
