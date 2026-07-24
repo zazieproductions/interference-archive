@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   components/DOM contract, setup, testing, performance, accessibility,
   deployment, design decision records (ADRs), and roadmap.
 - Community & governance files: `CODE_OF_CONDUCT.md`, `SECURITY.md`, GitHub issue
-  and pull-request templates, and a static-checks CI workflow.
+  and pull-request templates, and a ready-to-use static-checks CI workflow
+  (documented in `docs/TESTING.md`).
 - Restructured, portfolio-grade `README.md` with architecture and signal-chain
   diagrams, a feature matrix, tech-stack rationale, and a documentation index.
 

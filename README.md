@@ -226,7 +226,7 @@ interference-archive/
 │   │   └── app.js              # Audio engine, render loop, state, capture/export
 │   └── interference-archive-preview.png
 ├── docs/                       # Deep technical documentation (see below)
-├── .github/                    # CI workflow, issue/PR templates
+├── .github/                    # Issue/PR templates (CI snippet in docs/TESTING.md)
 ├── CONTRIBUTING.md
 ├── CODE_OF_CONDUCT.md
 ├── SECURITY.md
@@ -268,7 +268,7 @@ The longer-form reasoning, including trade-offs we explicitly rejected, is recor
 
 ## Quality: testing, performance, accessibility
 
-- **Testing** — This is a runtime-driven visual/audio app, so the strategy is a documented manual QA matrix plus static checks (HTML validation, link checking) run in CI. See [`docs/TESTING.md`](docs/TESTING.md).
+- **Testing** — This is a runtime-driven visual/audio app, so the strategy is a documented manual QA matrix plus static checks (HTML validation, link checking) suitable for CI. A ready-to-use workflow is in [`docs/TESTING.md`](docs/TESTING.md).
 - **Performance** — The render loop targets 60 fps at 720×420. Per-frame work is bounded (fixed particle count, fixed analyser bins, no per-frame allocations in the hot path). Budgets and profiling guidance are in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 - **Accessibility** — The piece is inherently visual/auditory, but the interface can still be made far more inclusive. Current status, honest known gaps (keyboard focus order, ARIA on the custom controls, `prefers-reduced-motion`), and the remediation plan are in [`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md).
 

@@ -9,7 +9,7 @@ testing strategy reflects that reality honestly.
 
 | Layer | Tooling | What it covers |
 | --- | --- | --- |
-| **Static checks** | HTML validation, link checking (CI) | Malformed markup, broken doc links, dead relative paths. |
+| **Static checks** | HTML validation, link checking (recommended CI, snippet below) | Malformed markup, broken doc links, dead relative paths. |
 | **Manual QA matrix** | The checklist below | The interactive behavior that automation can't easily assert. |
 | **Cross-browser smoke** | Chromium, Firefox, Safari | Audio init, rendering, capture/download across engines. |
 
@@ -32,7 +32,45 @@ The parts that *are* worth unit-testing are the pure mappings. The plan:
    runner (Vitest/Jest) — no browser needed.
 3. Add Playwright smoke tests: load the page, click initialize, assert the canvas
    is drawing (pixel delta between frames) and that capture produces a data URL.
-4. Wire both into the existing CI workflow.
+4. Wire both into the CI workflow below.
+
+## Recommended CI workflow
+
+Add this as `.github/workflows/ci.yml` to run static checks on every push and
+pull request (it is provided as a snippet rather than committed, so it can be
+enabled with a single file add):
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  static-checks:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Validate HTML
+        run: npx --yes html-validate index.html
+        continue-on-error: true
+      - name: Check documentation links
+        run: npx --yes markdown-link-check -q README.md CONTRIBUTING.md CHANGELOG.md SECURITY.md CODE_OF_CONDUCT.md
+        continue-on-error: true
+      - name: Verify project structure
+        run: |
+          set -e
+          for f in index.html assets/css/styles.css assets/js/app.js README.md LICENSE; do
+            test -f "$f" && echo "ok: $f" || (echo "MISSING: $f" && exit 1)
+          done
+```
 
 ## Manual QA checklist
 
