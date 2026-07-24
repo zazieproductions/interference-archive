@@ -1,0 +1,54 @@
+name: Bug report
+description: Report something that isn't working as expected
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Interference Archive. Please complete the fields below.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the live archive / local server
+        2. Click initialize
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Audio engine
+        - Rendering / visuals
+        - UI / controls
+        - Capture / export
+        - Accessibility
+        - Performance
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser & OS
+      placeholder: "e.g. Chrome 126 on macOS 14 / Firefox 128 on Windows 11"
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: Any errors or warnings from the browser devtools console.
+      render: shell
