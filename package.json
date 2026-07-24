@@ -2,17 +2,35 @@
   "name": "interference-archive",
   "version": "1.0.0",
   "private": true,
-  "description": "A generative audiovisual horror instrument and fictional recovered-transmission interface built with Web Audio and Canvas.",
+  "description": "A generative audiovisual instrument and fictional recovered-transmission interface built with the Web Audio API and Canvas 2D. Zero dependencies, no build step.",
   "keywords": [
     "creative-coding",
+    "creative-technology",
     "web-audio",
+    "web-audio-api",
     "generative-art",
     "sound-design",
+    "procedural-audio",
     "canvas",
+    "canvas-2d",
     "audiovisual",
     "interaction-design",
+    "diegetic-ui",
     "speculative-interface",
     "digital-art"
   ],
-  "license": "MIT"
+  "homepage": "https://zazieproductions.github.io/interference-archive/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zazieproductions/interference-archive.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zazieproductions/interference-archive/issues"
+  },
+  "author": "Zazie Productions",
+  "license": "MIT",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "serve": "npx --yes serve ."
+  }
 }

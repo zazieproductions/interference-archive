@@ -1,0 +1,26 @@
+# Dependencies (this project has none; guard against accidental installs)
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build / tooling output
+dist/
+build/
+coverage/
+.cache/
+
+# Editor / OS cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Generated case-file artifacts (produced at runtime by the app)
+IA-*.txt
+IA-*.png

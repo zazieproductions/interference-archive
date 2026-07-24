@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/zazieproductions/interference-archive/tree/main/docs
+    about: Architecture, audio engine, rendering, API reference, and more.
+  - name: Roadmap
+    url: https://github.com/zazieproductions/interference-archive/blob/main/docs/ROADMAP.md
+    about: Check whether your idea is already planned.
