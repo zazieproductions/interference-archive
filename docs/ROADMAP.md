@@ -23,8 +23,6 @@ Items are grouped by theme, not committed dates. Community input via
   `analyser.getByteFrequencyData()` bins.
 - **Microphone / line-input mode.** Feed a live input through the analyser and
   the graph for reactive performance use.
-- **Wire the Residue parameter** to real spatialization (a `StereoPannerNode` or
-  convolution reverb).
 - **Per-site synthesis architectures.** Give each node a genuinely different
   signal chain, not just different parameter presets.
 - **Exportable audio.** Capture output with `MediaRecorder` so a transmission can

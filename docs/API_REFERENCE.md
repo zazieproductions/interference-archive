@@ -26,18 +26,28 @@ decorative spectrogram, registers keyboard shortcuts, and starts `animate()`.
 
 ### `initAudio()`
 Builds the entire Web Audio graph once (idempotent — returns early if the context
-already exists), starts the oscillators and noise source, and wires the master
-chain. See [AUDIO_ENGINE.md](AUDIO_ENGINE.md).
+already exists), starts the oscillators and noise source, wires the master
+chain, and constructs the Spatial Residue stage (send filters, procedural IR
+convolver, decorrelated tap delays/panners). See [AUDIO_ENGINE.md](AUDIO_ENGINE.md).
 
 ### `createNoiseBuffer()`
 Allocates a ~4-second mono white-noise `AudioBuffer` and fills it with uniform
 noise. Called by `initAudio()`.
 
+### `createResidueImpulse()`
+Returns a 1.8-second **stereo** `AudioBuffer` used as the residue convolver's
+impulse response: one-pole-smeared noise under a `(1 − t)^2.8` envelope, with
+different smear coefficients and four faint early reflections per channel so
+the L/R tails decorrelate. Called by `initAudio()`; returns `null` if the
+context doesn't exist.
+
 ### `updateAudioFromParams()`
 The single source of truth for parameter → audio mapping. Reads `params` and the
 active site and applies smoothed (`setTargetAtTime`) targets to the oscillators,
-filter, noise gain, delay, feedback, and master. Called on every param change and
-every frame.
+filter, noise gain, delay, feedback, the residue stage (wet gain, tap gain,
+tap spacing, pan spread), and the master gain — the master target is gated by
+`isPowered`/`isMuted` so offline/mute always wins. Called on every param change
+and every frame.
 
 ### `evolveAudio(t)`
 Per-frame autonomous modulation: voice-oscillator vibrato, occasional filter
@@ -52,8 +62,9 @@ itself.
 
 ### `drawCanvas()`
 Renders one frame: pulls time-domain and frequency-domain data from the analyser
-and composites background, grid, waveform, spectrogram, particles, vignette,
-label, and scanline. See [RENDERING.md](RENDERING.md).
+and composites background, grid, residue afterimage, waveform, spectrogram,
+particles, vignette, label, and scanline. It also copies the current waveform
+into the afterimage ring. See [RENDERING.md](RENDERING.md).
 
 ### `createParticles()`
 Seeds the fixed particle pool (80 particles). Called at init and re-seedable.
@@ -81,7 +92,8 @@ ranges, syncs the UI, updates audio, and logs the change.
 
 ### `toggleMute()` — DOM
 Flips `isMuted` and ramps `masterGain` between a near-silent floor and nominal
-level; updates the mute indicator/label.
+level; updates the mute indicator/label. The same gate is re-applied every frame
+by `updateAudioFromParams()`, and while offline the target stays at 0.
 
 ### `togglePower()` — DOM
 Flips `isPowered` and linearly ramps `masterGain` off/on; swaps the
@@ -124,10 +136,12 @@ Streams a short sequence of framing/disclaimer lines into the log.
 | `isMuted`, `isPowered` | boolean | Transport state. |
 | `oscillators` | array | `{ osc, gain, baseFreq }` per partial. |
 | `analyser`, `filterNode`, `delayNode`, `feedbackGain`, `masterGain`, `noiseGain`, `noiseSource`, `noiseBuffer` | Web Audio nodes | Created in `initAudio()`. |
+| `residueSendHP`, `residueSendLP`, `residueConvolver`, `residueWetGain`, `residueTapsGain`, `residueDelayL`, `residueDelayR`, `residuePanL`, `residuePanR` | Web Audio nodes | The Spatial Residue stage, created in `initAudio()`. |
 | `canvas`, `ctx` | Canvas + 2D context | Acquired in `initializeSystem()`. |
 | `particles` | array | Fixed pool. |
 | `waveformData` | `Uint8Array(128)` | Time-domain buffer, reused. |
 | `frequencyData` | `Uint8Array(64)` | Frequency-domain buffer, reused. |
+| `waveHistory`, `waveHistoryIndex`, `waveHistoryFilled` | `Uint8Array(128)` × 8 + counters | Residue afterimage ring; allocated once, filled in place. |
 | `sites` | array | The site model (see [ARCHITECTURE.md](ARCHITECTURE.md#the-site-model)). |
 | `classifications` | array | Random capture classifications. |
 | `currentAccent` | string | Active accent hex, used by the renderer. |

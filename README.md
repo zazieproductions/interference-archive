@@ -169,16 +169,20 @@ The audio graph is built once in `initAudio()` and modulated continuously therea
  osc1 (sine 128Hz)─▶ gain ┤
  osc2 (sine 210Hz)─▶ gain ├─▶ droneMix ┐
  osc3 (saw 340Hz) ─▶ gain ┘             │
-                                        ├─▶ biquad LOWPASS ─▶ delay ─▶ analyser ─▶ master ─▶ 🔈
- noiseBuffer ─▶ noiseSource ─▶ noiseGain ┘        ▲            │
-                                                  │            └─▶ feedbackGain ─┐
-                                                  └───────────────(feedback)────┘
+                                        ├─▶ biquad LOWPASS ─▶ delay ─┬─(dry)───────────────────────────┐
+ noiseBuffer ─▶ noiseSource ─▶ noiseGain ┘        ▲            │      │                               │
+                                                  │            │      └─▶ residue wet path ────────────┤
+                                                  │            │           (convolver + stereo taps)  │
+                                                  │            └─▶ feedbackGain ─┐                    │
+                                                  │                              │                    ▼
+                                                  └───────────────(feedback)────┘         analyser ─▶ master ─▶ 🔈
 ```
 
 - **Oscillator bank** — three sine partials and one sawtooth "voice," each with its own gain, summed into a drone mix.
 - **Noise layer** — a 4-second looped white-noise `AudioBuffer` provides the "contamination" texture.
 - **Biquad lowpass filter** — the tonal gate; its cutoff is the most audible parameter target.
 - **Delay + feedback** — a recirculating delay (`delay → feedbackGain → delay`, plus a tap back into the filter) creates the haunted, smeared tail.
+- **Spatial Residue stage** — a feed-forward wet path tapped off the delay: a procedurally generated 1.8 s stereo impulse-response convolver plus decorrelated, panned early-reflection taps. Band-limited, quiet, and never fed back into the loop; at 0 it is a pure bypass of the dry signal.
 - **AnalyserNode** — non-destructive tap that drives the visuals.
 - **Master gain** — final level, ramped for power/mute transitions.
 
@@ -193,7 +197,7 @@ Six normalized parameters (0–100) are mapped to audio targets with smoothed `s
 | **Signal Cohesion** | fragile ↔ stable | Oscillator frequency spread + filter cutoff |
 | **Memory Decay** | slow ↔ rapid | Delay time + feedback amount |
 | **Observer Contamination** | clean ↔ polluted | Noise-layer gain |
-| **Spatial Residue** | flat ↔ diffuse | Reserved for spatialization (drives presets/state today) |
+| **Spatial Residue** | flat ↔ diffuse | Wet-path room + stereo width: convolver level (`residue²`), tap gain, early-tap spacing (12–51 ms) and pan spread (±0.35–0.9); also drives the visual afterimage |
 | **Voice Reconstruction** | silence ↔ clarity | Filter cutoff bias + "voice" oscillator modulation depth |
 | **Archive Integrity** | decaying ↔ stable | Oscillator gain + master level |
 

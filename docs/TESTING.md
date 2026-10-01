@@ -87,11 +87,18 @@ Run this before opening a PR (see [CONTRIBUTING.md](../CONTRIBUTING.md)):
 - [ ] Cohesion/Voice audibly open and close the filter.
 - [ ] Contamination blends the noise layer in and out.
 - [ ] Decay lengthens/thickens the echo without runaway feedback.
+- [ ] Spatial Residue: at `FLAT` the image is dry and centered; sliding toward
+      `DIFFUSE` adds a soft stereo room tail and widens the taps — subtle, no
+      wash, no runaway. The dry signal itself must not change character.
 - [ ] Mute ramps to near-silence and back; Power ramps offline/online.
+- [ ] Mute still holds near-silence while sliders are being moved, and moving a
+      slider while `OFFLINE` must not bring the audio back.
 
 **Visuals**
 - [ ] Oscilloscope tracks the waveform; spectrogram bars move with the spectrum.
 - [ ] Particle field visibly responds to audio energy.
+- [ ] Spatial Residue: higher values leave a lingering, drifting afterimage of
+      the trace and make the particle field wander; low values stay crisp.
 - [ ] Switching sites recolors the visuals and updates labels.
 - [ ] Frame rate stays smooth (see [PERFORMANCE.md](PERFORMANCE.md)).
 

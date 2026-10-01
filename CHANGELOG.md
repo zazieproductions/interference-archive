@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Spatial Residue is now a real effect** (native Web Audio, no dependencies):
+  a feed-forward wet path tapped off the delay line — a procedurally generated
+  1.8 s stereo impulse-response convolver plus decorrelated, panned
+  early-reflection taps whose gain, spacing (12–51 ms), and stereo spread
+  (±0.35–0.9) all scale with the slider. Band-limited, capped low, never fed
+  back into the delay loop, and a pure bypass at `FLAT`.
+- **Residue-coupled visuals:** an 8-frame phosphor afterimage of the
+  oscilloscope trace with residue-scaled persistence, alpha falloff, and slow
+  drift, plus a matching wander term on the particle field. The afterimage
+  ring is fixed-size and allocation-free, and it shows up in capture
+  snapshots.
 - Comprehensive technical documentation suite under `docs/`:
   architecture, audio engine, rendering pipeline, API reference, UI
   components/DOM contract, setup, testing, performance, accessibility,
@@ -21,6 +32,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Expanded `CONTRIBUTING.md` with coding conventions, the DOM contract, a QA
   gate, and PR expectations.
+
+### Fixed
+- Mute now actually holds: the per-frame `updateAudioFromParams()` master-gain
+  mapping (and any slider move made while `OFFLINE`) used to override the
+  mute/power ramps within a frame. The gate now lives inside the mapping
+  (`!isPowered ? 0 : isMuted ? 0.02 : nominal`), so mute reaches the documented
+  near-silent floor, sliders stay gated while offline, and reconnecting while
+  muted stays muted.
 
 ## [1.0.0] — 2026
 
