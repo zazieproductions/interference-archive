@@ -127,7 +127,7 @@ npx serve .
 
 Visit **http://localhost:8000** and click to initialize. Audio starts only after that first gesture — this is intentional and matches how modern browsers gate autoplaying sound.
 
-> No installation, build, or environment variables are required. `package.json` carries metadata and keywords only; there is no dependency graph to resolve.
+> No installation, build, or environment variables are required to run the piece — there are no runtime dependencies to install. `package.json` carries metadata and keywords, plus one dev-only dependency (`@playwright/test`) for the smoke suite below.
 
 See [`docs/SETUP.md`](docs/SETUP.md) for browser support notes and troubleshooting.
 
@@ -169,16 +169,20 @@ The audio graph is built once in `initAudio()` and modulated continuously therea
  osc1 (sine 128Hz)─▶ gain ┤
  osc2 (sine 210Hz)─▶ gain ├─▶ droneMix ┐
  osc3 (saw 340Hz) ─▶ gain ┘             │
-                                        ├─▶ biquad LOWPASS ─▶ delay ─▶ analyser ─▶ master ─▶ 🔈
- noiseBuffer ─▶ noiseSource ─▶ noiseGain ┘        ▲            │
-                                                  │            └─▶ feedbackGain ─┐
-                                                  └───────────────(feedback)────┘
+                                        ├─▶ biquad LOWPASS ─▶ delay ─┬─(dry)───────────────────────────┐
+ noiseBuffer ─▶ noiseSource ─▶ noiseGain ┘        ▲            │      │                               │
+                                                  │            │      └─▶ residue wet path ────────────┤
+                                                  │            │           (convolver + stereo taps)  │
+                                                  │            └─▶ feedbackGain ─┐                    │
+                                                  │                              │                    ▼
+                                                  └───────────────(feedback)────┘         analyser ─▶ master ─▶ 🔈
 ```
 
 - **Oscillator bank** — three sine partials and one sawtooth "voice," each with its own gain, summed into a drone mix.
 - **Noise layer** — a 4-second looped white-noise `AudioBuffer` provides the "contamination" texture.
 - **Biquad lowpass filter** — the tonal gate; its cutoff is the most audible parameter target.
 - **Delay + feedback** — a recirculating delay (`delay → feedbackGain → delay`, plus a tap back into the filter) creates the haunted, smeared tail.
+- **Spatial Residue stage** — a feed-forward wet path tapped off the delay: a procedurally generated 1.8 s stereo impulse-response convolver plus decorrelated, panned early-reflection taps. Band-limited, quiet, and never fed back into the loop; at 0 it is a pure bypass of the dry signal.
 - **AnalyserNode** — non-destructive tap that drives the visuals.
 - **Master gain** — final level, ramped for power/mute transitions.
 
@@ -193,7 +197,7 @@ Six normalized parameters (0–100) are mapped to audio targets with smoothed `s
 | **Signal Cohesion** | fragile ↔ stable | Oscillator frequency spread + filter cutoff |
 | **Memory Decay** | slow ↔ rapid | Delay time + feedback amount |
 | **Observer Contamination** | clean ↔ polluted | Noise-layer gain |
-| **Spatial Residue** | flat ↔ diffuse | Reserved for spatialization (drives presets/state today) |
+| **Spatial Residue** | flat ↔ diffuse | Wet-path room + stereo width: convolver level (`residue²`), tap gain, early-tap spacing (12–51 ms) and pan spread (±0.35–0.9); also drives the visual afterimage |
 | **Voice Reconstruction** | silence ↔ clarity | Filter cutoff bias + "voice" oscillator modulation depth |
 | **Archive Integrity** | decaying ↔ stable | Oscillator gain + master level |
 
@@ -226,13 +230,16 @@ interference-archive/
 │   │   └── app.js              # Audio engine, render loop, state, capture/export
 │   └── interference-archive-preview.png
 ├── docs/                       # Deep technical documentation (see below)
+├── tests/
+│   └── smoke.spec.js           # Playwright smoke suite (dev-only, run with `npm test`)
 ├── .github/                    # Issue/PR templates (CI snippet in docs/TESTING.md)
 ├── CONTRIBUTING.md
 ├── CODE_OF_CONDUCT.md
 ├── SECURITY.md
 ├── CHANGELOG.md
 ├── LICENSE
-├── package.json                # Metadata + keywords only (no dependencies)
+├── package.json                # Scripts + metadata; no runtime dependencies
+├── playwright.config.js        # Chromium smoke-test config (dev-only)
 └── README.md
 ```
 
@@ -268,7 +275,7 @@ The longer-form reasoning, including trade-offs we explicitly rejected, is recor
 
 ## Quality: testing, performance, accessibility
 
-- **Testing** — This is a runtime-driven visual/audio app, so the strategy is a documented manual QA matrix plus static checks (HTML validation, link checking) suitable for CI. A ready-to-use workflow is in [`docs/TESTING.md`](docs/TESTING.md).
+- **Testing** — A committed Playwright smoke suite (`npm test`, ~25s) asserts the boot sequence, the Spatial Residue audio/visual coupling, all six parameter mappings, mute/power gating, site presets, and the capture/download flow against the real page. It is complemented by a documented manual QA matrix for the perceptual checks and static checks (HTML validation, link checking) for CI. See [`docs/TESTING.md`](docs/TESTING.md).
 - **Performance** — The render loop targets 60 fps at 720×420. Per-frame work is bounded (fixed particle count, fixed analyser bins, no per-frame allocations in the hot path). Budgets and profiling guidance are in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 - **Accessibility** — The piece is inherently visual/auditory, but the interface can still be made far more inclusive. Current status, honest known gaps (keyboard focus order, ARIA on the custom controls, `prefers-reduced-motion`), and the remediation plan are in [`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md).
 

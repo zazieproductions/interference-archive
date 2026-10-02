@@ -44,12 +44,42 @@ important performance property of the renderer.
 | --- | --- | --- |
 | 1 | **Background wash** | Solid dark green fill. |
 | 2 | **Grid** | Static vertical/horizontal lines — the instrument's graticule. |
-| 3 | **Oscilloscope waveform** | `waveformData`, stroked twice (wide glow pass + tight core pass) in the site accent color. |
-| 4 | **Spectrogram bars** | `frequencyData` bins mapped to bar heights with little "caps." |
-| 5 | **Particle field** | `particles[]`, advected by per-particle angle/speed and scaled by average audio energy. |
-| 6 | **Vignette** | Radial gradient darkening toward the edges. |
-| 7 | **Ghost label** | A low-opacity `"SIGNAL"` word behind the trace. |
-| 8 | **Scanline** | A moving horizontal bar keyed to wall-clock time. |
+| 3 | **Residue afterimage** | The last ≤6 waveform frames (see below), stroked faintly behind the live trace. |
+| 4 | **Oscilloscope waveform** | `waveformData`, stroked twice (wide glow pass + tight core pass) in the site accent color, then copied into the afterimage ring. |
+| 5 | **Spectrogram bars** | `frequencyData` bins mapped to bar heights with little "caps." |
+| 6 | **Particle field** | `particles[]`, advected by per-particle angle/speed, average audio energy, and residue drift. |
+| 7 | **Vignette** | Radial gradient darkening toward the edges. |
+| 8 | **Ghost label** | A low-opacity `"SIGNAL"` word behind the trace. |
+| 9 | **Scanline** | A moving horizontal bar keyed to wall-clock time. |
+
+## Spatial Residue: persistence, drift, afterimage
+
+The renderer reads `params.residue` directly (the one place a parameter drives
+pixels without going through the audio graph), and uses it three ways:
+
+- **Afterimage.** A fixed ring of the last 8 waveform frames
+  (`waveHistory`, allocated once at module scope and refilled with `.set()` —
+  no per-frame allocation). Each frame draws up to
+  `round(residue/100 × 6)` older traces behind the live one, with alpha falling
+  off toward the older frames and scaled by `0.18 × residue`. At `FLAT` this is
+  one nearly-invisible trace; at `DIFFUSE` the oscilloscope smears into a
+  phosphor tail that lingers several frames.
+- **Drift.** Each afterimage frame is offset by slow sine/cosine terms scaled by
+  `residue × frame index` (up to roughly ±11 px horizontally, ±7 px vertically at
+  maximum), so the tail wanders instead of sitting still — the "haunted" part.
+- **Particle drift.** Particles pick up small lateral/vertical wander terms
+  scaled by residue (≤ 0.18 px/frame), so the field visibly loses cohesion as
+  the residue rises.
+
+The afterimage is drawn *before* the live trace and with `shadowBlur = 0`, so
+the glow cost stays exactly where it was: the extra work per frame is at most
+six 128-point strokes with no shadow, on top of the existing passes. Because
+the trails live on the main canvas, `captureTransmission()` snapshots include
+them — a capture taken at high residue genuinely looks longer-exposed.
+
+The audio side of the same control (the convolved tail and stereo taps) feeds
+the analyser, so the live trace *also* smears because the signal itself does —
+see [AUDIO_ENGINE.md](AUDIO_ENGINE.md#the-spatial-residue-stage).
 
 Glow is achieved with `ctx.shadowBlur` / `ctx.shadowColor` set to the active
 accent, which is why the trace reads as neon CRT phosphor rather than a flat
@@ -62,6 +92,7 @@ speed, angle, and life. Per frame each particle:
 
 - Advances along its angle, with horizontal speed scaled by the current average
   audio energy (`avgVol`) so the field visibly "breathes" with the sound.
+- Picks up a residue-scaled sine/cosine wander (see *Spatial Residue* above).
 - Slowly curves (its angle increments) and ages (life decrements).
 - Respawns when it dies or leaves the canvas.
 

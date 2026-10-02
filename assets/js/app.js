@@ -25,6 +25,16 @@
         let filterNode;
         let delayNode;
         let feedbackGain;
+        // Spatial Residue stage (feed-forward wet path tapped off the delay line)
+        let residueSendHP;
+        let residueSendLP;
+        let residueConvolver;
+        let residueWetGain;
+        let residueTapsGain;
+        let residueDelayL;
+        let residueDelayR;
+        let residuePanL;
+        let residuePanR;
         let params = {
             cohesion: 68,
             decay: 44,
@@ -121,6 +131,16 @@
         let particles = [];
         let waveformData = new Uint8Array(128);
         let frequencyData = new Uint8Array(64);
+        
+        // Spatial Residue afterimage: a fixed ring of past waveform frames.
+        // Allocated once; refilled with .set() every frame (no hot-path allocs).
+        const residueHistoryFrames = 8;
+        let waveHistory = [];
+        let waveHistoryIndex = 0;
+        let waveHistoryFilled = 0;
+        for (let hi = 0; hi < residueHistoryFrames; hi++) {
+            waveHistory.push(new Uint8Array(128));
+        }
         let logMessages = [];
         let currentAccent = "#67ff9c";
         
@@ -143,6 +163,43 @@
             for (let i = 0; i < bufferSize; i++) {
                 output[i] = Math.random() * 2 - 1;
             }
+        }
+        
+        // Procedural impulse response for the Spatial Residue stage: a short,
+        // dark, decorrelated stereo tail with a few uneven early reflections.
+        // It is meant to read as a room the signal remembers, not a lush hall —
+        // so the decay is steep and the noise is one-pole smeared per channel.
+        function createResidueImpulse() {
+            if (!audioContext) return null;
+            
+            const rate = audioContext.sampleRate;
+            const seconds = 1.8;
+            const length = Math.floor(rate * seconds);
+            const buffer = audioContext.createBuffer(2, length, rate);
+            
+            for (let ch = 0; ch < 2; ch++) {
+                const data = buffer.getChannelData(ch);
+                const smear = ch === 0 ? 0.55 : 0.62;   // slightly different per channel
+                let last = 0;
+                
+                for (let i = 0; i < length; i++) {
+                    const t = i / length;
+                    const envelope = Math.pow(1 - t, 2.8);
+                    last = last * smear + (Math.random() * 2 - 1) * (1 - smear);
+                    data[i] = last * envelope;
+                }
+                
+                // Faint, uneven early reflections (a room remembered, not measured)
+                const reflections = ch === 0
+                    ? [0.011, 0.023, 0.047, 0.089]
+                    : [0.014, 0.027, 0.041, 0.096];
+                reflections.forEach(sec => {
+                    const idx = Math.floor(sec * rate);
+                    if (idx < length) data[idx] += 0.3 * (1 - sec);
+                });
+            }
+            
+            return buffer;
         }
         
         function initAudio() {
@@ -173,6 +230,39 @@
                 // Connect delay feedback loop
                 delayNode.connect(feedbackGain);
                 feedbackGain.connect(delayNode);
+                
+                // Spatial Residue stage — a feed-forward "room ghost" tapped off
+                // the delay line. The dry path bypasses it entirely, so residue
+                // at 0 sounds identical to a bypassed stage.
+                residueSendHP = audioContext.createBiquadFilter();
+                residueSendHP.type = 'highpass';
+                residueSendHP.frequency.value = 260;
+                residueSendHP.Q.value = 0.7;
+                
+                residueSendLP = audioContext.createBiquadFilter();
+                residueSendLP.type = 'lowpass';
+                residueSendLP.frequency.value = 5200;
+                residueSendLP.Q.value = 0.7;
+                
+                residueConvolver = audioContext.createConvolver();
+                residueConvolver.normalize = true;
+                residueConvolver.buffer = createResidueImpulse();
+                
+                residueWetGain = audioContext.createGain();
+                residueWetGain.gain.value = 0;
+                
+                residueTapsGain = audioContext.createGain();
+                residueTapsGain.gain.value = 0;
+                
+                residueDelayL = audioContext.createDelay(0.2);
+                residueDelayL.delayTime.value = 0.012;
+                residueDelayR = audioContext.createDelay(0.2);
+                residueDelayR.delayTime.value = 0.019;
+                
+                residuePanL = audioContext.createStereoPanner();
+                residuePanL.pan.value = -0.6;
+                residuePanR = audioContext.createStereoPanner();
+                residuePanR.pan.value = 0.6;
                 
                 // Noise
                 createNoiseBuffer();
@@ -224,6 +314,25 @@
                 // Add a little feedback from delay to filter too
                 feedbackGain.connect(filterNode);
                 
+                // Route the Spatial Residue wet path into the analyser.
+                // Both branches are feed-forward, so the delay feedback loop
+                // is untouched and cannot run away through the residue stage.
+                delayNode.connect(residueSendHP);
+                residueSendHP.connect(residueSendLP);
+                
+                residueSendLP.connect(residueConvolver);
+                residueConvolver.connect(residueWetGain);
+                residueWetGain.connect(analyser);
+                
+                residueSendLP.connect(residueDelayL);
+                residueDelayL.connect(residuePanL);
+                residuePanL.connect(residueTapsGain);
+                
+                residueSendLP.connect(residueDelayR);
+                residueDelayR.connect(residuePanR);
+                residuePanR.connect(residueTapsGain);
+                residueTapsGain.connect(analyser);
+                
             } catch(e) {
                 console.error("Audio init failed", e);
             }
@@ -259,9 +368,25 @@
             const feedbackAmount = params.decay / 180;
             feedbackGain.gain.setTargetAtTime(Math.max(0.15, Math.min(0.65, feedbackAmount)), audioContext.currentTime, 0.3);
             
-            // Master gain affected by integrity
+            // Spatial Residue: wet-path level, tap spacing and stereo spread.
+            // The dry path never changes, so 0 = bypassed stage.
+            const residue = Math.max(0, Math.min(100, params.residue)) / 100;
+            if (residueWetGain && residueTapsGain && residueDelayL && residueDelayR && residuePanL && residuePanR) {
+                residueWetGain.gain.setTargetAtTime(residue * residue * 0.26, audioContext.currentTime, 0.35);
+                residueTapsGain.gain.setTargetAtTime(residue * 0.16, audioContext.currentTime, 0.35);
+                residueDelayL.delayTime.setTargetAtTime(0.012 + residue * 0.024, audioContext.currentTime, 0.5);
+                residueDelayR.delayTime.setTargetAtTime(0.019 + residue * 0.032, audioContext.currentTime, 0.5);
+                const spread = 0.35 + residue * 0.55;
+                residuePanL.pan.setTargetAtTime(-spread, audioContext.currentTime, 0.5);
+                residuePanR.pan.setTargetAtTime(spread, audioContext.currentTime, 0.5);
+            }
+            
+            // Master gain affected by integrity. Mute and power always win over
+            // the per-frame mapping (updateAudioFromParams also runs on slider
+            // input while offline, so the gate has to live here too).
             if (masterGain) {
-                masterGain.gain.setTargetAtTime(0.5 + (params.integrity / 400), audioContext.currentTime, 0.2);
+                const masterTarget = !isPowered ? 0 : (isMuted ? 0.02 : (0.5 + (params.integrity / 400)));
+                masterGain.gain.setTargetAtTime(masterTarget, audioContext.currentTime, 0.2);
             }
         }
         
@@ -346,6 +471,44 @@
             const w = canvas.width;
             const h = canvas.height;
             
+            // How much the image remembers: Spatial Residue drives persistence,
+            // drift and afterimage strength (0 = crisp single frame, 1 = long tail)
+            const residueNorm = Math.max(0, Math.min(1, params.residue / 100));
+            const frameTime = Date.now() / 1000;
+            
+            // Phosphor afterimage — the last few frames of the trace, faded and
+            // drifting slowly sideways. Drawn behind the live trace.
+            const ghostCount = Math.min(Math.round(residueNorm * 6), waveHistoryFilled);
+            if (ghostCount > 0) {
+                const ghostSlice = w / waveformData.length;
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = currentAccent;
+                ctx.lineWidth = 1.5;
+                
+                for (let g = ghostCount; g >= 1; g--) {
+                    const past = waveHistory[(waveHistoryIndex - g + waveHistory.length) % waveHistory.length];
+                    const falloff = 1 - g / (ghostCount + 1);
+                    const drift = residueNorm * g;
+                    const dx = Math.sin(frameTime * 0.6 + g * 1.7) * drift * 1.8;
+                    const dy = Math.cos(frameTime * 0.4 + g * 1.1) * drift * 1.2;
+                    
+                    ctx.globalAlpha = falloff * 0.18 * residueNorm;
+                    ctx.beginPath();
+                    let gx = 30 + dx;
+                    for (let i = 0; i < past.length; i++) {
+                        const y = (past[i] / 128.0) * (h / 2.4) + (h / 4.5) + dy;
+                        if (i === 0) {
+                            ctx.moveTo(gx, y);
+                        } else {
+                            ctx.lineTo(gx, y);
+                        }
+                        gx += ghostSlice;
+                    }
+                    ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+            }
+            
             // Draw oscilloscope waveform
             ctx.shadowBlur = 22;
             ctx.shadowColor = currentAccent;
@@ -375,6 +538,11 @@
             ctx.lineWidth = 1.5;
             ctx.stroke();
             
+            // Remember this frame for the residue afterimage (ring buffer, reused)
+            waveHistory[waveHistoryIndex].set(waveformData);
+            waveHistoryIndex = (waveHistoryIndex + 1) % waveHistory.length;
+            if (waveHistoryFilled < waveHistory.length) waveHistoryFilled++;
+            
             // Frequency bars on the right
             const barWidth = 9;
             const startX = w - 140;
@@ -402,8 +570,10 @@
             for (let i = 0; i < particles.length; i++) {
                 const p = particles[i];
                 
-                p.x += Math.cos(p.angle) * p.speed * (avgVol * 4 + 0.4);
-                p.y += Math.sin(p.angle) * p.speed * 0.6;
+                p.x += Math.cos(p.angle) * p.speed * (avgVol * 4 + 0.4)
+                    + Math.sin(frameTime * 0.35 + i * 0.7) * residueNorm * 0.18;
+                p.y += Math.sin(p.angle) * p.speed * 0.6
+                    + Math.cos(frameTime * 0.27 + i * 0.4) * residueNorm * 0.12;
                 p.life--;
                 p.angle += 0.01;
                 
@@ -631,7 +801,9 @@
             isMuted = !isMuted;
             
             if (masterGain) {
-                masterGain.gain.setTargetAtTime(isMuted ? 0.02 : 0.6, audioContext.currentTime, 0.1);
+                // Mute/power gate the output; the nominal level is otherwise left alone.
+                const target = !isPowered ? 0 : (isMuted ? 0.02 : 0.6);
+                masterGain.gain.setTargetAtTime(target, audioContext.currentTime, 0.1);
             }
             
             const ind = document.getElementById("mute-indicator");
@@ -658,7 +830,7 @@
                 statusEl.innerHTML = `● CONNECTED`;
                 statusEl.classList.add("text-emerald-400");
                 statusEl.classList.remove("text-zinc-500");
-                if (masterGain) masterGain.gain.linearRampToValueAtTime(0.6, audioContext.currentTime + 0.8);
+                if (masterGain) masterGain.gain.linearRampToValueAtTime(isMuted ? 0.02 : 0.6, audioContext.currentTime + 0.8);
             }
         }
         

@@ -51,11 +51,10 @@ The defining relationship is the loop between audio and image, bridged by an
    │  keys)       │  readback (telemetry)└─────────┬──────────┘
    └──────────────┘                                │
                                                    │ updateAudioFromParams()
-                                                   ▼
-                                        ┌────────────────────┐
+                                                   ▼                                        ┌────────────────────┐
                                         │   Web Audio graph   │
-                                        │  osc/noise/filter/  │
-                                        │  delay/master       │
+                                        │ osc/noise/filter/   │
+                                        │ delay/residue/master│
                                         └─────────┬──────────┘
                                                    │ AnalyserNode tap
                                      time-domain + frequency-domain bytes
@@ -117,7 +116,9 @@ All state is module-scoped in `app.js`. The important pieces:
 | `isPowered` / `isMuted` | Boolean state machines that gate/ramp the master gain. |
 | `oscillators[]` | The oscillator bank: `{ osc, gain, baseFreq }` per partial. |
 | `analyser`, `filterNode`, `delayNode`, `feedbackGain`, `masterGain`, `noiseGain` | Long-lived Web Audio nodes created once in `initAudio()`. |
+| `residueSendHP/LP`, `residueConvolver`, `residueWetGain`, `residueTapsGain`, `residueDelayL/R`, `residuePanL/R` | The Spatial Residue stage: a feed-forward wet path off the delay line (see [AUDIO_ENGINE](AUDIO_ENGINE.md#the-spatial-residue-stage)). |
 | `particles[]`, `waveformData`, `frequencyData` | Render-loop buffers, allocated once. |
+| `waveHistory[]`, `waveHistoryIndex`, `waveHistoryFilled` | The residue afterimage ring: 8 past waveform frames, allocated once, refilled in place (see [RENDERING](RENDERING.md)). |
 | `elapsedTime`, `lastTime` | The frame clock. |
 
 State is deliberately global rather than encapsulated: the app is a single
@@ -149,8 +150,12 @@ behavior) but intentionally coupled at runtime through two well-defined seams:
   functions live. Add a mapping there and nowhere else.
 - **Audio → visuals:** the `AnalyserNode` is the single tap. `drawCanvas()`
   reads from it and owns all pixels.
+- **Params → visuals (the one exception):** `drawCanvas()` also reads
+  `params.residue` directly to scale the phosphor afterimage and particle
+  drift — a persistence effect that has to be drawn from frame history rather
+  than heard. It is deliberately the only parameter the renderer reads.
 
-Keeping those two seams narrow is what lets each subsystem evolve independently
+Keeping those seams narrow is what lets each subsystem evolve independently
 — you can rework the visuals without touching the DSP, and vice versa.
 
 ## Related reading

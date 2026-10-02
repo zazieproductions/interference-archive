@@ -19,6 +19,11 @@ The renderer is designed so that cost does not grow over a session:
 
 - **Reused buffers.** `waveformData` (128) and `frequencyData` (64) are allocated
   once and refilled each frame — no allocation in the loop.
+- **Fixed afterimage ring.** The Spatial Residue afterimage reads from
+  `waveHistory`, a fixed 8-frame ring of `Uint8Array(128)` allocated at module
+  scope and refilled with `.set()`. At most 6 extra 128-point strokes are drawn
+  per frame (only when residue is above ~8), and they deliberately run with
+  `shadowBlur = 0`, so they add no shadow-pass cost.
 - **Fixed particle pool.** 80 particles, recycled on death/exit. Particle count
   never grows.
 - **Fixed analyser size.** `fftSize 256` yields stable, small data views.
@@ -37,9 +42,10 @@ The renderer is designed so that cost does not grow over a session:
   cost; it's cheap relative to the shadow blur but is the next thing to cut if
   needed.
 - **`updateAudioFromParams()` runs every frame.** It's inexpensive (a handful of
-  `setTargetAtTime` calls), but it only *needs* to run on change. A
-  straightforward optimization is to make it change-driven and keep only
-  `evolveAudio()` per-frame.
+  `setTargetAtTime` calls, including the residue stage's six), but it only
+  *needs* to run on change. A straightforward optimization is to make it
+  change-driven and keep only `evolveAudio()` per-frame. Note the mute/power
+  gate lives in that mapping, so any refactor must preserve it.
 
 ## Profiling recipe
 

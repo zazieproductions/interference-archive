@@ -13,14 +13,56 @@ All of this lives in `assets/js/app.js`.
  osc1 (sine, 128Hz) ─▶ gain1 ┤
  osc2 (sine, 210Hz) ─▶ gain2 ├─▶ droneMix ┐
  osc3 (saw,  340Hz) ─▶ gain3 ┘            │
-                                          ├─▶ filterNode ─▶ delayNode ─▶ analyser ─▶ masterGain ─▶ destination
- noiseBuffer ─▶ noiseSource ─▶ noiseGain ─┘      ▲             │
-                                                 │             └─▶ feedbackGain ─┐
-                                                 │                               │
-                                                 └────────── feedback tap ───────┘
+                                          ├─▶ filterNode ─▶ delayNode ─┬─(dry)───────────────────────────┐
+ noiseBuffer ─▶ noiseSource ─▶ noiseGain ─┘      ▲             │       │                               │
+                                                 │             │       └─▶ residue wet path ────────────┤
+                                                 │             │            (stage shown below)         │
+                                                 │             └─▶ feedbackGain ─┐                      │
+                                                 │                               │                      ▼
+                                                 └────────── feedback tap ───────┘           analyser ─▶ masterGain ─▶ destination
                                                           (delay → feedbackGain → delay,
                                                            and feedbackGain → filterNode)
 ```
+
+The dry path and both residue wet outputs all sum into the same analyser input.
+
+### The Spatial Residue stage
+
+The delay line also feeds a **feed-forward wet path** — the "room ghost" —
+whose two outputs sum into the same analyser input as the dry path:
+
+```
+ delayNode ──┬─▶ (dry — unchanged) ─────────────────────────────────────────────┐
+             │                                                                  │
+             ├─▶ residue send ─▶ highpass 260 ─▶ lowpass 5200 ─┬─▶ convolver (1.8s stereo IR) ─▶ residueWetGain ─┐
+             │                                                  ├─▶ residueDelayL ─▶ residuePanL ─┐                │
+             │                                                  └─▶ residueDelayR ─▶ residuePanR ─┴─▶ residueTapsGain ┤
+             │                                                                                          ▼            │
+             │                                                                        (all three paths sum) ◀───────┘
+             └─▶ feedbackGain ─▶ delayNode / filterNode
+                    pre-existing feedback loop — untouched
+```
+
+Design rules:
+
+- **Feed-forward only.** Nothing from the residue stage returns to the delay /
+  filter feedback loop, so it can never push the loop into runaway — the
+  feedback clamp (`[0.15, 0.65]`) still governs recirculation.
+- **The dry path is never touched.** Residue at 0 drives both wet gains to 0,
+  which is bit-for-bit a bypassed stage (the HP/LP send and its silence still
+  cost a few nodes, but no audible contribution).
+- **Band-limited and quiet.** The send is high-passed at 260 Hz and low-passed
+  at 5.2 kHz so the tail stays dusty and never muddies the drone, and the wet
+  gain tops out at `0.26` (convolver) + `0.16` (taps) — audible width, not a
+  wash.
+- **Native only.** The impulse response is generated procedurally by
+  `createResidueImpulse()` — a 1.8-second, two-channel, one-pole-smeared noise
+  burst with a steep `(1 − t)^2.8` envelope and four faint, uneven early
+  reflections per channel (different times and smear coefficients per side, so
+  L and R decorrelate). No audio files, no dependencies.
+
+Mute and power sit downstream of this stage (`masterGain`), so they govern the
+residue tail exactly as they govern the dry signal — see *Power and mute* below.
 
 ## Nodes and defaults
 
@@ -37,6 +79,12 @@ Created in `initAudio()`:
 | `oscillators[0..3]` | `OscillatorNode` + `GainNode` | 85/128/210/340 Hz; last is `sawtooth` | The drone partials; osc3 is the "voice." |
 | `droneMix` | `GainNode` | unity | Sums the oscillator bank. |
 | `noiseSource` | `AudioBufferSourceNode` | looping | Plays the generated noise buffer. |
+| `residueSendHP` / `residueSendLP` | `BiquadFilterNode` | `highpass 260 Hz` / `lowpass 5200 Hz`, `Q 0.7` | Band-limits the residue send. |
+| `residueConvolver` | `ConvolverNode` | `normalize: true`, 1.8 s stereo IR | The room the signal remembers. |
+| `residueWetGain` | `GainNode` | `0` → max `0.26` | Convolver level, driven by `residue²`. |
+| `residueTapsGain` | `GainNode` | `0` → max `0.16` | Level of the decorrelated early taps. |
+| `residueDelayL` / `residueDelayR` | `DelayNode` | 12–36 ms / 19–51 ms | Early-reflection spacing (widens with residue). |
+| `residuePanL` / `residuePanR` | `StereoPannerNode` | `∓(0.35 … 0.9)` | Stereo spread of the taps. |
 
 ### The noise buffer
 
@@ -70,8 +118,8 @@ clicking.
 | **Cohesion + Voice** | `cutoff = min(400 + cohesion·18 + voice·8, 4200)` | Opens/closes the lowpass filter — the most audible control. |
 | **Contamination** | `noiseGain = contamination / 220` | Blends in the noise layer. |
 | **Decay** | `delayTime = 0.1 + decay/110`; `feedback = clamp(decay/180, 0.15, 0.65)` | Longer, denser echoes. |
-| **Integrity** | `oscGain = 0.25 + integrity/300`; `masterGain = 0.5 + integrity/400` | Overall presence and level. |
-| **Residue** | (reserved) | Currently drives per-site presets and telemetry; slated for spatialization — see [roadmap](ROADMAP.md). |
+| **Integrity** | `oscGain = 0.25 + integrity/300`; `masterGain = 0.5 + integrity/400` (gated by mute/power) | Overall presence and level. |
+| **Residue** | `r = residue/100`; `wet = r² · 0.26`; `taps = r · 0.16`; `tapDelay = 12 + r·24 ms` (L) / `19 + r·32 ms` (R); `pan = ±(0.35 + r · 0.55)` | Wet-path room and width: convolved tail + decorrelated early taps, summed after the delay line. Dry path untouched. Also drives the visual afterimage (see [RENDERING](RENDERING.md)). |
 
 Per-site tuning: `updateAudioFromParams()` reads the active site's `baseFreq`, so
 the same parameter values sound different at each node.
@@ -96,10 +144,14 @@ Neither toggle disconnects nodes; both ramp `masterGain` so transitions are
 smooth:
 
 - **Mute** — `setTargetAtTime(0.02 or 0.6, …, 0.1)` (a near-silent floor, not
-  absolute zero, so the tail doesn't pop).
+  absolute zero, so the tail doesn't pop). Because `updateAudioFromParams()`
+  also re-targets `masterGain` every frame (and on every slider move, even while
+  offline), the mute/power gate lives *inside* that mapping too:
+  `masterTarget = !isPowered ? 0 : isMuted ? 0.02 : 0.5 + integrity/400`. Without
+  it, the per-frame mapping fights mute back up to nominal level within a frame.
 - **Power** — `linearRampToValueAtTime(0, +0.6s)` to go offline;
-  `linearRampToValueAtTime(0.6, +0.8s)` to reconnect. While offline, the render
-  loop stops evolving/updating audio but keeps drawing.
+  `linearRampToValueAtTime(isMuted ? 0.02 : 0.6, +0.8s)` to reconnect. While
+  offline, the render loop stops evolving/updating audio but keeps drawing.
 
 ## Autoplay policy
 
@@ -114,7 +166,8 @@ Good first extensions (see also [CONTRIBUTING](../CONTRIBUTING.md)):
 
 - Add a new mapping in `updateAudioFromParams()` — it is the only place transfer
   functions belong.
-- Wire the **Residue** parameter to a `StereoPannerNode` or convolution reverb.
+- Reshape the residue impulse response (length, envelope, reflection times) in
+  `createResidueImpulse()` — it is regenerated from scratch at init.
 - Replace the manual bar-drawing with true FFT bins from
   `analyser.getByteFrequencyData()` for the on-canvas spectrogram.
 
