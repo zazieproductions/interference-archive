@@ -10,35 +10,84 @@ testing strategy reflects that reality honestly.
 | Layer | Tooling | What it covers |
 | --- | --- | --- |
 | **Static checks** | HTML validation, link checking (recommended CI, snippet below) | Malformed markup, broken doc links, dead relative paths. |
-| **Manual QA matrix** | The checklist below | The interactive behavior that automation can't easily assert. |
-| **Cross-browser smoke** | Chromium, Firefox, Safari | Audio init, rendering, capture/download across engines. |
+| **Browser smoke test** | Playwright (`tests/smoke.spec.js`, `npm test`) | Boot + audio graph construction, Spatial Residue transfer functions, parameter mappings, site presets, mute/power gating, capture/download. |
+| **Manual QA matrix** | The checklist below | The interactive behavior that automation can't easily assert (does the tail *sound* smooth, does the field breathe with the sound). |
+| **Cross-browser smoke** | Chromium, Firefox, Safari | Audio init, rendering, capture/download across engines. The automated suite currently runs Chromium only. |
 
-## Why not unit tests today?
+## Why not unit tests?
 
 Nearly every function in `app.js` has side effects on the Web Audio graph, the
-Canvas, or the DOM, and the meaningful assertions are perceptual (does the tail
-sound smooth, does the field breathe with the sound). Unit tests over that
-surface would mostly assert mocks. The pragmatic, honest position is: **static
-checks in CI + a disciplined manual matrix now**, with a clear path to automation
-(below) as pure logic is extracted.
+Canvas, or the DOM, and the meaningful assertions are perceptual. Unit tests over
+that surface would mostly assert mocks — so there are none. What *can* be
+asserted honestly is behavior end-to-end in a real browser, and that is covered
+by the committed Playwright smoke suite. The pragmatic position is now: **a
+Playwright smoke suite + static checks in CI + a disciplined manual matrix**, with
+unit tests reserved for pure logic if it is ever extracted (below).
+
+## The Playwright smoke suite
+
+```bash
+npm install            # installs the dev-only @playwright/test dependency
+npx playwright install chromium   # one-time browser download
+npm test               # or: npm run test:headed
+```
+
+`tests/smoke.spec.js` is a port of the ad-hoc Chrome DevTools Protocol harness
+used while building Spatial Residue. It is deliberately white-box in places:
+`assets/js/app.js` is a single script scope, and `page.evaluate()` shares that
+scope, so the tests read the live Web Audio nodes and render state directly
+(`residueWetGain.gain.value`, `params`, `drawCanvas()`, …).
+
+Covered (8 tests, ~22s single-worker):
+
+- **Boot** — overlay click starts a running `AudioContext`, the full Spatial
+  Residue node chain and stereo IR exist, the ring buffer fills, the dry signal
+  reaches the analyser.
+- **Residue audio** — a real slider click moves the wet gain, delay times and
+  stereo pans along the documented transfer functions; the wet path carries
+  measurable, decorrelated L/R signal; `updateParam(3, 0)` bypasses the stage
+  without touching the dry signal.
+- **Residue visuals** — path-count probe proves the 6-vs-1 ghost-stroke
+  afterimage; 60 draws at `residue = 100` stay under the 4ms frame budget; the
+  canvas keeps changing between frames.
+- **Parameters** — all six sliders reach their audio targets and readouts.
+- **Randomize** — button and `Cmd/Ctrl+K` reshuffle every parameter.
+- **Sites** — presets, accent colors and site codes (`#site-2` → `C09`,
+  `#site-4` → `NULL`).
+- **Mute/power** — gating holds during slider moves and while `OFFLINE`
+  (regression guards for the `masterGain` mapping).
+- **Capture** — modal content, archive ID format, the `.txt` + `.png` download
+  pair, the `/` shortcut and log clearing.
+
+Every test also fails on any non-benign `pageerror` or `console.error`, so a
+silent runtime exception cannot pass as green.
+
+Robustness notes: navigation waits only for the `file://` commit and then
+awaits explicit conditions (app.js executed, Tailwind stylesheet applied,
+`AudioContext` running, dry signal at the analyser), each with a 15–30s bound —
+a stalled CDN request fails fast instead of hanging the run. Audio-parameter
+assertions poll the live nodes until they converge rather than sleeping a fixed
+interval, so a slow machine or a briefly stalled audio clock cannot produce a
+false failure.
 
 ## Path to automation
 
-The parts that *are* worth unit-testing are the pure mappings. The plan:
+Step 3 is done — and the committed suite goes further than sketched (it asserts
+live Web Audio node values, not just canvas pixels). What remains:
 
 1. Extract the parameter transfer functions (e.g. the cutoff/spread/feedback
    formulas in `updateAudioFromParams()`) into pure helpers.
 2. Unit-test those helpers (input param → expected numeric target) with a small
    runner (Vitest/Jest) — no browser needed.
-3. Add Playwright smoke tests: load the page, click initialize, assert the canvas
+3. ✅ Playwright smoke tests: load the page, click initialize, assert the canvas
    is drawing (pixel delta between frames) and that capture produces a data URL.
-4. Wire both into the CI workflow below.
+4. Wire the suite into the CI workflow below.
 
 ## Recommended CI workflow
 
-Add this as `.github/workflows/ci.yml` to run static checks on every push and
-pull request (it is provided as a snippet rather than committed, so it can be
-enabled with a single file add):
+Add this as `.github/workflows/ci.yml` to run the smoke suite and static checks
+on every push and pull request (it is provided as a snippet rather than
+committed, so it can be enabled with a single file add):
 
 ```yaml
 name: CI
@@ -50,6 +99,21 @@ on:
     branches: ["**"]
 
 jobs:
+  smoke:
+    name: Playwright smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dev dependencies
+        run: npm install
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run smoke suite
+        run: npm test
+
   static-checks:
     name: Static checks
     runs-on: ubuntu-latest
@@ -67,14 +131,17 @@ jobs:
       - name: Verify project structure
         run: |
           set -e
-          for f in index.html assets/css/styles.css assets/js/app.js README.md LICENSE; do
+          for f in index.html assets/css/styles.css assets/js/app.js tests/smoke.spec.js README.md LICENSE; do
             test -f "$f" && echo "ok: $f" || (echo "MISSING: $f" && exit 1)
           done
 ```
 
 ## Manual QA checklist
 
-Run this before opening a PR (see [CONTRIBUTING.md](../CONTRIBUTING.md)):
+Run `npm test` first, then this manual matrix before opening a PR (see
+[CONTRIBUTING.md](../CONTRIBUTING.md)). The smoke suite already asserts boot,
+the residue audio/visual behavior, mute/power gating, and capture end-to-end —
+what is left here is the perceptual and cross-browser judgment work:
 
 **Boot**
 - [ ] Page loads with the initialize overlay; a "WAITING FOR USER GESTURE" log

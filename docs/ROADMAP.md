@@ -12,8 +12,10 @@ Items are grouped by theme, not committed dates. Community input via
   See [ACCESSIBILITY.md](ACCESSIBILITY.md).
 - **Pin / self-host CDN assets.** Remove the runtime dependency on the Tailwind
   and Google Fonts CDNs (see [ADR-008](DESIGN_DECISIONS.md#adr-008--cdn-tailwind--google-fonts-with-a-hardening-path)).
-- **Extract pure transfer functions** from `updateAudioFromParams()` and add unit
-  tests + a Playwright smoke test in CI. See [TESTING.md](TESTING.md).
+- **Extract pure transfer functions** from `updateAudioFromParams()` and add
+  unit tests. A Playwright smoke test now exists (`tests/smoke.spec.js`); the
+  remaining step is wiring it into a committed CI workflow. See
+  [TESTING.md](TESTING.md).
 - **Change-driven audio updates.** Stop calling `updateAudioFromParams()` every
   frame; drive it on change only. See [PERFORMANCE.md](PERFORMANCE.md).
 

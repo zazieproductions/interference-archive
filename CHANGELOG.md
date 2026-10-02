@@ -19,6 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   drift, plus a matching wander term on the particle field. The afterimage
   ring is fixed-size and allocation-free, and it shows up in capture
   snapshots.
+- **Playwright smoke suite** (`tests/smoke.spec.js`, `npm test`): 8 end-to-end
+  checks ported from the development CDP harness — boot and residue node chain,
+  the residue transfer functions measured on the live audio graph (wet gain,
+  taps, decorrelated L/R delays and pans, bypass at 0), the afterimage +
+  frame-budget probe, all six parameter mappings, randomize (button and
+  `Cmd/Ctrl+K`), site presets/accents, mute/power gating incl. regression
+  guards, and the capture `.txt` + `.png` download pair. Every test also fails
+  on stray page or console errors. Playwright is a dev-only dependency — the
+  app itself still has no runtime dependencies and no build step.
 - Comprehensive technical documentation suite under `docs/`:
   architecture, audio engine, rendering pipeline, API reference, UI
   components/DOM contract, setup, testing, performance, accessibility,

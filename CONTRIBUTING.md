@@ -76,9 +76,11 @@ unless your fork intentionally establishes a new direction. See
 
 ## Quality gate
 
-Before requesting review, run the full **manual QA checklist** in
-[docs/TESTING.md](docs/TESTING.md) and confirm:
+Before requesting review, run the **Playwright smoke suite** (`npm install &&
+npx playwright install chromium`, then `npm test`) and the **manual QA checklist**
+in [docs/TESTING.md](docs/TESTING.md), then confirm:
 
+- `npm test` passes (8 smoke tests, no console/page errors).
 - No console errors on boot or during interaction.
 - Audio changes are smooth (no clicks/zippering).
 - Frame rate stays smooth; no new hot-path allocations.

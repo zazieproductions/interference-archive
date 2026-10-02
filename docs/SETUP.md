@@ -85,7 +85,10 @@ The piece relies on the Web Audio API, Canvas 2D, `requestAnimationFrame`, and
 
 ## Repository conventions
 
-- No dependencies are committed; `package.json` is metadata only.
+- No runtime dependencies are committed; the app runs from static files with no
+  install step. `package.json` holds scripts and metadata, plus one dev-only
+  dependency (`@playwright/test`) for the smoke suite — see [TESTING.md](TESTING.md).
 - Keep large generated artifacts out of Git.
 - See [CONTRIBUTING.md](../CONTRIBUTING.md) for branch/PR workflow and
-  [TESTING.md](TESTING.md) for the manual QA checklist to run before a PR.
+  [TESTING.md](TESTING.md) for the Playwright smoke suite (`npm test`) and the
+  manual QA checklist to run before a PR.
